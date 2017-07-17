@@ -10,6 +10,9 @@ const csrf = require('csurf');
 const request = require('request');
 const cheerio = require('cheerio');
 
+const Canvas = require('canvas');
+const Crossword = require('crossword');
+
 console.log('Connecting to MongoDB (required)');
 mongoose.connect(process.env.MONGOLAB_URI || process.env.MONGODB_URI || 'localhost');
 
@@ -32,7 +35,7 @@ app.use(session({
 
 const csrfProtection = csrf({ cookie: true });
 
-findGoodTopic = (callback) => {
+let findGoodTopic = (callback) => {
   request('https://simple.wikipedia.org/wiki/Special:Random', (err, resp, body) => {
     if (err) {
       return callback(err);
@@ -40,15 +43,32 @@ findGoodTopic = (callback) => {
     let $ = cheerio.load(body);
     let articleName = $('#firstHeading').text();
     articleName = articleName.split(' (')[0].split(',')[0];
-    if (articleName.indexOf(' ') > -1 || articleName.indexOf('-') > -1) {
-      //return findGoodTopic(callback);
-    }
-    let articleText = $($('.mw-parser-output > p')[0]).text()
-      .replace(new RegExp(articleName, 'gi'), '__')
+
+    let firstArticlePara = $($('.mw-parser-output > p')[0])
+    let articleText = firstArticlePara.text()
       .replace(/\[\d+\]/g, '');
+    let nameInstances = firstArticlePara.find('b, em');
+    for (let i = 0; i < nameInstances.length; i++) {
+      articleText = articleText.replace($(nameInstances[i]).text(), '__');
+    }
     articleText = articleText.substring(articleText.indexOf('__'))
       .replace('__ is ', '')
-      .replace('__ are ', '');
+      .replace('__ are ', '')
+      .replace('(__)')
+      .replace(/\s+/, ' ');
+
+    let lastName = false;
+    if (articleName.indexOf(' ') > -1 && (articleText.indexOf('–') > -1 || articleText.indexOf('(born ') > -1)) {
+      // last name only
+      articleName = articleName.split(' ');
+      articleName = articleName[articleName.length - 1];
+      lastName = true;
+    }
+    if (articleName.indexOf(' ') > -1 || articleName.indexOf('-') > -1) {
+      // articles with spaces and hyphens could be really confusing
+      return findGoodTopic(callback);
+    }
+
     let formatText = articleText;
     if (articleText.indexOf('. ') > -1) {
       formatText = articleText.substring(0, articleText.indexOf('. ')) + '.';
@@ -62,16 +82,69 @@ findGoodTopic = (callback) => {
     if (!formatText.length) {
       return findGoodTopic(callback);
     }
+    if (lastName) {
+      formatText += ' (last name only)';
+    }
     callback(null, articleName, formatText);
   });
 };
 
 app.get('/', (req, res) => {
-  findGoodTopic((err, articleName, articleText) => {
-    res.json({
-      name: articleName,
-      text: articleText
-    });
+  let addWords = (number, callback) => {
+    let words = [];
+    let addWord = (err, articleName, articleClue) => {
+      if (err) {
+        return callback(err);
+      }
+      words.push({
+        name: articleName,
+        clue: articleClue
+      });
+      if (words.length === number) {
+        callback(null, words);
+      } else {
+        findGoodTopic(addWord);
+      }
+    };
+    findGoodTopic(addWord);
+  };
+
+  addWords(6, (err, words) => {
+    if (err) {
+      throw err;
+    }
+
+    let width = 20;
+    let height = 20;
+    let canv = new Canvas(40 * width, 40 * height);
+    let game = new Crossword(canv, width, height);
+    game.clearCanvas(true);
+
+    let added = [];
+
+    let addClue = () => {
+      if (words.length) {
+        let toAdd = words.pop();
+        game.addWord(toAdd.name, (err, clueAnchor, direction) => {
+          if (err) {
+            return addClue();
+          }
+          added.push({
+            direction: direction,
+            clueAnchor: clueAnchor,
+            clue: toAdd.clue
+            // , solution: toAdd.name.replace(/\w/g, '_')
+          });
+          addClue();
+        });
+      } else {
+        res.render('index', {
+          image: canv.toDataURL(),
+          clues: added
+        });
+      }
+    };
+    addClue();
   });
 });
 
