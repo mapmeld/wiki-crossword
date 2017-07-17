@@ -44,7 +44,7 @@ let findGoodTopic = (callback) => {
     }
     let $ = cheerio.load(body);
     let articleName = $('#firstHeading').text();
-    articleName = articleName.split(' (')[0].split(',')[0];
+    articleName = articleName.split(' (')[0].split(',')[0].replace("'", '');
 
     // remove year articles
     if (!isNaN(articleName * 1)) {
@@ -63,7 +63,7 @@ let findGoodTopic = (callback) => {
       articleName = articleName[articleName.length - 1];
       lastName = true;
     }
-    if (articleName.indexOf(' ') > -1 || articleName.indexOf('-') > -1) {
+    if (articleName.indexOf(' ') > -1 || articleName.indexOf('-') > -1 || articleName.indexOf('!') > -1 || articleName.indexOf('?') > -1) {
       // articles with spaces and hyphens could be really confusing
       return findGoodTopic(callback);
     }
