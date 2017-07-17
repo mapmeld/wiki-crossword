@@ -44,19 +44,16 @@ let findGoodTopic = (callback) => {
     let articleName = $('#firstHeading').text();
     articleName = articleName.split(' (')[0].split(',')[0];
 
+    // remove year articles
+    if (!isNaN(articleName * 1)) {
+      return findGoodTopic(callback);
+    }
+
     let firstArticlePara = $($('.mw-parser-output > p')[0])
     let articleText = firstArticlePara.text()
       .replace(/\[\d+\]/g, '');
-    let nameInstances = firstArticlePara.find('b, em');
-    for (let i = 0; i < nameInstances.length; i++) {
-      articleText = articleText.replace($(nameInstances[i]).text(), '__');
-    }
-    articleText = articleText.substring(articleText.indexOf('__'))
-      .replace('__ is ', '')
-      .replace('__ are ', '')
-      .replace('(__)')
-      .replace(/\s+/, ' ');
 
+    // make people articles feasible
     let lastName = false;
     if (articleName.indexOf(' ') > -1 && (articleText.indexOf('–') > -1 || articleText.indexOf('(born ') > -1)) {
       // last name only
@@ -69,6 +66,17 @@ let findGoodTopic = (callback) => {
       return findGoodTopic(callback);
     }
 
+    // remove and smooth out multiple references to the name
+    let nameInstances = firstArticlePara.find('b, em');
+    for (let i = 0; i < nameInstances.length; i++) {
+      articleText = articleText.replace($(nameInstances[i]).text(), '__');
+    }
+    articleText = articleText.substring(articleText.indexOf('__'))
+      .replace('__ is ', '')
+      .replace('__ are ', '')
+      .replace('(__)', '')
+      .replace(/\s+/, ' ');
+
     let formatText = articleText;
     if (articleText.indexOf('. ') > -1) {
       formatText = articleText.substring(0, articleText.indexOf('. ')) + '.';
@@ -79,7 +87,7 @@ let findGoodTopic = (callback) => {
         }
       }
     }
-    if (!formatText.length) {
+    if ((formatText.indexOf('Coordinates: ') > -1) || (!formatText.length)) {
       return findGoodTopic(callback);
     }
     if (lastName) {
