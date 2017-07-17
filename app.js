@@ -3,9 +3,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
-const MongoStore = require('connect-mongo')(session);
+//const MongoStore = require('connect-mongo')(session);
 const compression = require('compression');
-const mongoose = require('mongoose');
+//const mongoose = require('mongoose');
 const csrf = require('csurf');
 const request = require('request');
 const cheerio = require('cheerio');
@@ -13,8 +13,8 @@ const cheerio = require('cheerio');
 const Canvas = require('canvas');
 const Crossword = require('crossword');
 
-console.log('Connecting to MongoDB (required)');
-mongoose.connect(process.env.MONGOLAB_URI || process.env.MONGODB_URI || 'localhost');
+//console.log('Connecting to MongoDB (required)');
+//mongoose.connect(process.env.MONGOLAB_URI || process.env.MONGODB_URI || 'localhost');
 
 var app = express();
 app.set('views', __dirname + '/views');
@@ -24,6 +24,7 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(compression());
 app.use(cookieParser());
+/*
 app.use(session({
   store: new MongoStore({
     mongooseConnection: mongoose.connection
@@ -32,6 +33,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false
 }));
+*/
 
 const csrfProtection = csrf({ cookie: true });
 
@@ -117,7 +119,7 @@ app.get('/', (req, res) => {
     findGoodTopic(addWord);
   };
 
-  addWords(6, (err, words) => {
+  addWords(7, (err, words) => {
     if (err) {
       throw err;
     }
