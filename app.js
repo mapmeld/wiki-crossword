@@ -3,18 +3,19 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
-//const MongoStore = require('connect-mongo')(session);
+const MongoStore = require('connect-mongo')(session);
 const compression = require('compression');
-//const mongoose = require('mongoose');
-const csrf = require('csurf');
+const mongoose = require('mongoose');
 const request = require('request');
 const cheerio = require('cheerio');
 
 const Canvas = require('canvas');
 const Crossword = require('crossword');
 
-//console.log('Connecting to MongoDB (required)');
-//mongoose.connect(process.env.MONGOLAB_URI || process.env.MONGODB_URI || 'localhost');
+const Game = require('./models/game.js');
+
+console.log('Connecting to MongoDB (required)');
+mongoose.connect(process.env.MONGOLAB_URI || process.env.MONGODB_URI || 'localhost');
 
 var app = express();
 app.set('views', __dirname + '/views');
@@ -24,7 +25,6 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(compression());
 app.use(cookieParser());
-/*
 app.use(session({
   store: new MongoStore({
     mongooseConnection: mongoose.connection
@@ -33,9 +33,6 @@ app.use(session({
   resave: false,
   saveUninitialized: false
 }));
-*/
-
-const csrfProtection = csrf({ cookie: true });
 
 let findGoodTopic = (callback) => {
   request('https://simple.wikipedia.org/wiki/Special:Random', (err, resp, body) => {
@@ -100,6 +97,18 @@ let findGoodTopic = (callback) => {
 };
 
 app.get('/', (req, res) => {
+  Game.findOne({ language: 'simple' }, (err, g) => {
+    if (err) {
+      res.json(err);
+    } else if (!g) {
+      res.redirect('/game/new');
+    } else {
+      res.render('index', g);
+    }
+  });
+});
+
+app.get('/game/new', (req, res) => {
   let addWords = (number, callback) => {
     let words = [];
     let addWord = (err, articleName, articleClue) => {
@@ -119,7 +128,7 @@ app.get('/', (req, res) => {
     findGoodTopic(addWord);
   };
 
-  addWords(7, (err, words) => {
+  addWords(9, (err, words) => {
     if (err) {
       throw err;
     }
@@ -148,13 +157,27 @@ app.get('/', (req, res) => {
           addClue();
         });
       } else {
-        res.render('index', {
+        let g = new Game({
           image: canv.toDataURL(),
-          clues: added
+          clues: added,
+          language: 'simple'
+        });
+        g.save((err) => {
+          if (err) {
+            res.json(err);
+          } else {
+            res.redirect('/game/' + g._id);
+          }
         });
       }
     };
     addClue();
+  });
+});
+
+app.get('/game/:id', (req, res) => {
+  Game.findById(req.params.id, (err, g) => {
+    res.render('index', g);
   });
 });
 

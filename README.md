@@ -38,12 +38,20 @@ ___ (4 July 1910 – 5 May 1968) was a NHL ice hockey centre who played 10 seaso
 
 ## Requirements
 
-NodeJS, Cairo (or other library to support node-canvas)
+MongoDB, NodeJS, Cairo (or other library to support node-canvas)
 
 The ```crossword``` module supports several scripts in Unicode, but no right-to-left language support yet.
 
 I was unable to get node-canvas working on Heroku now that various buildpacks
 backup modules are outdated, so I got a DigitalOcean box.
+
+```
+mongod
+export SESSION='SECRETKEY'
+npm start &
+disown
+exit
+```
 
 ## License
 
