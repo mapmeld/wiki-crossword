@@ -34,8 +34,8 @@ app.use(session({
   saveUninitialized: false
 }));
 
-let findGoodTopic = (callback) => {
-  request('https://simple.wikipedia.org/wiki/Special:Random', (err, resp, body) => {
+let findGoodTopic = (language, callback) => {
+  request('https://' + language + '.wikipedia.org/wiki/Special:Random', (err, resp, body) => {
     if (err) {
       return callback(err);
     }
@@ -45,24 +45,33 @@ let findGoodTopic = (callback) => {
 
     // remove year articles
     if (!isNaN(articleName * 1)) {
-      return findGoodTopic(callback);
+      return findGoodTopic(language, callback);
     }
 
     let firstArticlePara = $($('.mw-parser-output > p')[0])
     let articleText = firstArticlePara.text()
       .replace(/\[\d+\]/g, '');
 
+    let biographyPotential = $('.biography').text();
+    let biography = (biographyPotential.indexOf('Nacimiento') > -1 || biographyPotential.indexOf('Naissance') > -1 || biographyPotential.indexOf('Geboren') > -1);
+
     // make people articles feasible
     let lastName = false;
-    if (articleName.indexOf(' ') > -1 && (articleText.indexOf('–') > -1 || articleText.indexOf('(born ') > -1)) {
+    if (articleName.indexOf(' ') > -1 && (articleText.indexOf('–') > -1 || articleText.indexOf('(born ') > -1 || biography)) {
       // last name only
-      articleName = articleName.split(' ');
-      articleName = articleName[articleName.length - 1];
+      let articleNames = articleName.split(' ');
+      articleName = articleNames.pop();
+      if (articleNames[articleNames.length - 1] === 'de') {
+        articleName = 'de' + articleName;
+      }
+      if (articleNames.length > 1 && articleNames[articleNames.length - 2] === 'de' && articleNames[articleNames.length - 1] === 'la') {
+        articleName = 'dela' + articleName;
+      }
       lastName = true;
     }
     if (articleName.indexOf(' ') > -1 || articleName.indexOf('-') > -1 || articleName.indexOf('!') > -1 || articleName.indexOf('?') > -1) {
       // articles with spaces and hyphens could be really confusing
-      return findGoodTopic(callback);
+      return findGoodTopic(language, callback);
     }
 
     // remove and smooth out multiple references to the name
@@ -70,6 +79,7 @@ let findGoodTopic = (callback) => {
     for (let i = 0; i < nameInstances.length; i++) {
       articleText = articleText.replace($(nameInstances[i]).text(), '__');
     }
+    articleText = articleText.replace(new RegExp(articleName, 'ig'), '__');
     articleText = articleText.substring(articleText.indexOf('__'))
       .replace('__ is ', '')
       .replace('__ are ', '')
@@ -79,15 +89,15 @@ let findGoodTopic = (callback) => {
     let formatText = articleText;
     if (articleText.indexOf('. ') > -1) {
       formatText = articleText.substring(0, articleText.indexOf('. ')) + '.';
-      if (formatText.length < 60) {
+      if (formatText.length < 100) {
         articleText = articleText.substring(articleText.indexOf('. ') + 2);
         if (articleText.indexOf('.') > -1) {
           formatText += ' ' + articleText.substring(0, articleText.indexOf('.')) + '.';
         }
       }
     }
-    if ((formatText.indexOf('Coordinates: ') > -1) || (!formatText.length)) {
-      return findGoodTopic(callback);
+    if ((formatText.indexOf('Coordinates: ') > -1) || (formatText.indexOf('Koordinaten: ') > -1) || (!formatText.length)) {
+      return findGoodTopic(language, callback);
     }
     if (lastName) {
       formatText += ' (last name only)';
@@ -108,7 +118,9 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/game/new', (req, res) => {
+app.post('/game/new', (req, res) => {
+  let language = req.body.language || 'simple';
+
   let addWords = (number, callback) => {
     let words = [];
     let addWord = (err, articleName, articleClue) => {
@@ -122,10 +134,10 @@ app.get('/game/new', (req, res) => {
       if (words.length === number) {
         callback(null, words);
       } else {
-        findGoodTopic(addWord);
+        findGoodTopic(language, addWord);
       }
     };
-    findGoodTopic(addWord);
+    findGoodTopic(language, addWord);
   };
 
   addWords(9, (err, words) => {
@@ -139,28 +151,113 @@ app.get('/game/new', (req, res) => {
     let game = new Crossword(canv, width, height);
     game.clearCanvas(true);
 
+    if (language === 'my') {
+      /*
+      game.setNumberTransform(function(n) {
+        return myanmarNumbers(n, 'my');
+      });
+      */
+    } else if (language === 'hi') {
+      /*
+      game.setNumberTransform(function(txt) {
+        txt += '';
+        var numbers = {
+          '०': 0,
+          '१': 1,
+          '२': 2,
+          '३': 3,
+          '४': 4,
+          '५': 5,
+          '६': 6,
+          '७': 7,
+          '८': 8,
+          '९': 9
+        };
+
+        var keys = Object.keys(numbers);
+        for (var n = 0; n <= keys.length; n++) {
+          var re = new RegExp(numbers[keys[n]] + "", "g");
+          txt = txt.replace(re, keys[n]);
+        }
+        return txt;
+      });*/
+    } else if (language === 'ta') {
+      /*
+      game.setNumberTransform(function(txt) {
+        txt += '';
+        txt = txt.replace('100', '௱');
+        txt = txt.replace('10', '௰');
+        var numbers = {
+          '௦': 0,
+          '௧': 1,
+          '௨': 2,
+          '௩': 3,
+          '௪': 4,
+          '௫': 5,
+          '௬': 6,
+          '௭': 7,
+          '௮': 8,
+          '௯': 9
+        };
+
+        var keys = Object.keys(numbers);
+        for (var n = 0; n <= keys.length; n++) {
+          var re = new RegExp(numbers[keys[n]] + "", "g");
+          txt = txt.replace(re, keys[n]);
+        }
+        return txt;
+      });*/
+    } else if (language === 'ar' || language === 'ps') {
+      /*game.setNumberTransform(function(txt) {
+        txt += '';
+        var numbers = {
+          '٠': 0,
+          '١': 1,
+          '٢': 2,
+          '٣': 3,
+          '٤': 4,
+          '٥': 5,
+          '٦': 6,
+          '٧': 7,
+          '٨': 8,
+          '٩': 9
+        };
+
+        var keys = Object.keys(numbers);
+        for (var n = 0; n <= keys.length; n++) {
+          var re = new RegExp(numbers[keys[n]] + "", "g");
+          txt = txt.replace(re, keys[n]);
+        }
+        console.log(txt);
+        return txt;
+      });*/
+      game.setDirection('rtl');
+    } else if (language === 'dv') {
+      game.setDirection('rtl');
+    }
+
     let added = [];
 
     let addClue = () => {
       if (words.length) {
         let toAdd = words.pop();
+        console.log(toAdd);
         game.addWord(toAdd.name, (err, clueAnchor, direction) => {
-          if (err) {
-            return addClue();
+          if (!err) {
+            added.push({
+              direction: direction,
+              clueAnchor: clueAnchor,
+              clue: toAdd.clue
+              // , solution: toAdd.name.replace(/\w/g, '_')
+            });
           }
-          added.push({
-            direction: direction,
-            clueAnchor: clueAnchor,
-            clue: toAdd.clue
-            // , solution: toAdd.name.replace(/\w/g, '_')
-          });
           addClue();
         });
       } else {
         let g = new Game({
           image: canv.toDataURL(),
           clues: added,
-          language: 'simple'
+          language: req.body.language
         });
         g.save((err) => {
           if (err) {

@@ -5,7 +5,7 @@ html
     meta(name="viewport", content="width=device-width, initial-scale=1, user-scalable=no")
     title Wiki Crossword
     link(rel="stylesheet", href="/lib/bootstrap.min.css")
-    style .centered { text-align: center; }
+    style .centered { text-align: center; } select { margin-right: 25px; }
   body
     .container
       .row
@@ -13,7 +13,7 @@ html
           h3 Wiki Crossword
       .row
         .col-sm-6
-          p Assembled from randomly-selected Simple English wiki articles, available under a Creative Commons license.
+          p Assembled from randomly-selected Wikipedia articles, available under a Creative Commons license.
         .col-sm-6
           p
             a(href="https://github.com/mapmeld/wiki-crossword") Source code
@@ -25,10 +25,21 @@ html
       .row
         .col-sm-12.centered
           hr
-          a.btn.btn-success.btn-large(href="/game/new") Generate New Game
+          form(action='/game/new', method='POST')
+            select#langSelect(name='language')
+              option(value='simple') Simple English
+              option(value='es') Español
+              option(value='de') Deutsch
+              option(value='fr') Français
+              option(value='hi') हिन्दी
+              option(value='ta') தமிழ்
+              option(value='ps') پښتو‎
+              option(value='ar') العَرَبِيَّة‎‎
+              option(value='dv') ދިވެހި
+            input.btn.btn-success.btn-large(type='submit', value='Generate New Game')
           hr
       .row
-        .col-sm-12
+        #clues.col-sm-12
           .col-sm-6
             h4 Across
             ul#across
@@ -39,5 +50,5 @@ html
         .col-sm-12.centered
           img(src=image)
 
-    script var clues = !{JSON.stringify(clues)};
+    script var clues = !{JSON.stringify(clues)}; var lang = "#{language}";
     script(src="/scripts/puzzle.js")
