@@ -87,16 +87,17 @@ let findGoodTopic = (language, callback) => {
       .replace(/\s+/, ' ');
 
     let formatText = articleText;
-    if (articleText.indexOf('. ') > -1) {
-      formatText = articleText.substring(0, articleText.indexOf('. ')) + '.';
+    let sentenceEnd = (language === 'my') ? '။' : '.';
+    if (articleText.indexOf(sentenceEnd + ' ') > -1) {
+      formatText = articleText.substring(0, articleText.indexOf(sentenceEnd + ' ')) + sentenceEnd;
       if (formatText.length < 100) {
-        articleText = articleText.substring(articleText.indexOf('. ') + 2);
-        if (articleText.indexOf('.') > -1) {
-          formatText += ' ' + articleText.substring(0, articleText.indexOf('.')) + '.';
+        articleText = articleText.substring(articleText.indexOf(sentenceEnd + ' ') + 2);
+        if (articleText.indexOf(sentenceEnd) > -1) {
+          formatText += ' ' + articleText.substring(0, articleText.indexOf(sentenceEnd)) + sentenceEnd;
         }
       }
     }
-    if ((formatText.indexOf('Coordinates: ') > -1) || (formatText.indexOf('Koordinaten: ') > -1) || (!formatText.length)) {
+    if ((formatText.indexOf('Coordinates: ') > -1) || (formatText.indexOf('Koordinaten: ') > -1) || (formatText.length < 6)) {
       return findGoodTopic(language, callback);
     }
     if (lastName) {
