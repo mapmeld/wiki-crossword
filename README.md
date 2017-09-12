@@ -1,5 +1,7 @@
 ## Wiki-Crossword
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/mapmeld/wiki-crossword.svg)](https://greenkeeper.io/)
+
 NodeJS/Express server that generates articles from the Simple English Wikipedia
 (hopefully more in the future).
 
